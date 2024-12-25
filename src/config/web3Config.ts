@@ -1,13 +1,15 @@
 import { createConfig, http } from 'wagmi';
 import { getDefaultConfig } from 'connectkit';
 import { WALLET_CONNECT_PROJECT_ID, APP_CONFIG } from './constants';
-import { SUPPORTED_CHAINS, DEFAULT_CHAIN } from './chains';
+import { lensTestnet } from './chains/lens';
+
+const chains = [lensTestnet];
 
 export const config = createConfig(
   getDefaultConfig({
-    chains: SUPPORTED_CHAINS,
+    chains,
     transports: {
-      [DEFAULT_CHAIN.id]: http(),
+      [lensTestnet.id]: http(),
     },
     walletConnectProjectId: WALLET_CONNECT_PROJECT_ID,
     appName: APP_CONFIG.name,

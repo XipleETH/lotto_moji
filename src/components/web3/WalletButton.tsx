@@ -12,18 +12,16 @@ export const WalletButton: React.FC = () => {
         <button
           onClick={show}
           className={`fixed top-4 right-4 p-3 rounded-lg shadow-lg transition-all 
-                    hover:scale-105 flex items-center gap-2
+                    hover:scale-105
                     ${isConnected 
                       ? 'bg-green-600 hover:bg-green-700' 
                       : 'bg-purple-600 hover:bg-purple-700'} 
                     text-white`}
+          aria-label={isConnected ? 'Connected Wallet' : 'Connect Wallet'}
         >
-          <Wallet size={20} />
-          <span className="text-sm font-medium">
-            {isConnected ? 'Connected' : 'Connect Wallet'}
-          </span>
+          <Wallet size={24} />
         </button>
       )}
     </ConnectKitButton.Custom>
   );
-};
+}

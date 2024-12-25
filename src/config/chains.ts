@@ -25,6 +25,3 @@ export const lensTestnet = {
   },
   testnet: true
 } as const satisfies Chain;
-
-export const SUPPORTED_CHAINS = [lensTestnet] as const;
-export const DEFAULT_CHAIN = lensTestnet;
