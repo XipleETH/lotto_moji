@@ -7,4 +7,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: false, // Don't persist auth state since we're using wallet addresses
+    autoRefreshToken: false
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
+  }
+});

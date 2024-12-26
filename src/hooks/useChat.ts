@@ -1,43 +1,83 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ChatMessage } from '../types';
-
-// In a real app, this would be replaced with actual WebSocket logic
-const mockMessages: ChatMessage[] = [];
-const listeners: ((messages: ChatMessage[]) => void)[] = [];
-
-const broadcastMessages = () => {
-  listeners.forEach(listener => listener(mockMessages));
-};
+import { supabase } from '../lib/supabase';
+import { useWallet } from './useWallet';
+import { validateEmojis } from '../utils/emojiValidation';
 
 export function useChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const { address } = useWallet();
 
   useEffect(() => {
-    const handleMessages = (newMessages: ChatMessage[]) => {
-      setMessages([...newMessages]);
-    };
+    const loadMessages = async () => {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .order('created_at', { ascending: true })
+        .limit(50);
 
-    listeners.push(handleMessages);
-    handleMessages(mockMessages);
+      if (error) {
+        console.error('Error loading messages:', error);
+        return;
+      }
 
-    return () => {
-      const index = listeners.indexOf(handleMessages);
-      if (index > -1) {
-        listeners.splice(index, 1);
+      if (data) {
+        const validatedMessages = data.map(msg => ({
+          ...msg,
+          emojis: Array.isArray(msg.emojis) ? validateEmojis(msg.emojis) : []
+        }));
+        setMessages(validatedMessages);
       }
     };
-  }, []);
 
-  const sendMessage = useCallback((emojis: string[]) => {
-    const newMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      emojis,
-      timestamp: Date.now()
+    loadMessages();
+
+    // Subscribe to new messages
+    const channel = supabase
+      .channel('public:chat_messages')
+      .on(
+        'postgres_changes',
+        { 
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages'
+        },
+        (payload) => {
+          const newMessage = payload.new as ChatMessage;
+          setMessages(prev => [...prev, {
+            ...newMessage,
+            emojis: validateEmojis(newMessage.emojis)
+          }]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
     };
-
-    mockMessages.push(newMessage);
-    broadcastMessages();
   }, []);
+
+  const sendMessage = useCallback(async (emojis: string[]) => {
+    if (!address || emojis.length === 0) return;
+
+    const validatedEmojis = validateEmojis(emojis);
+    if (validatedEmojis.length === 0) return;
+
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert([{
+          user_id: address,
+          emojis: validatedEmojis
+        }]);
+
+      if (error) {
+        console.error('Error sending message:', error);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  }, [address]);
 
   return { messages, sendMessage };
 }
